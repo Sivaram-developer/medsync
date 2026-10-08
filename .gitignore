@@ -1,13 +1,10 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.env
-venv/
-env/
-
-# SQLite data and uploads (optional runtime data)
-*.db
-uploads/*
-!uploads/.gitkeep
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+.DS_Store
+Thumbs.db
