@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediSync - Healthcare Reminder & Adherence Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#F0F9FF',
+              100: '#E0F2FE',
+              200: '#BAE6FD',
+              500: '#0EA5E9',
+              600: '#0284C7',
+              700: '#0369A1',
+              800: '#075985',
+              900: '#0C4A6E',
+            },
+            medical: {
+              pill: '#3B82F6',
+              injection: '#8B5CF6',
+              scan: '#0D9488',
+              doc: '#EA580C',
+              safe: '#10B981',
+              warn: '#F59E0B',
+              danger: '#EF4444'
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Accessibility High Contrast / Large Text support */
+    body.accessible-mode {
+      font-size: 1.15rem;
+      line-height: 1.7;
+    }
+    body.accessible-mode button, body.accessible-mode .tap-target {
+      padding-top: 1rem !important;
+      padding-bottom: 1rem !important;
+      font-size: 1.1rem !important;
+    }
+    body.high-contrast {
+      filter: contrast(125%);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .emergency-pulse {
+      animation: pulse-ring 2s infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+  <!-- Persistent Non-Negotiable Medical Safety Banner -->
+  <header class="bg-amber-500 text-slate-900 text-xs sm:text-sm font-semibold py-2 px-4 shadow-sm border-b border-amber-600 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto w-full flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-slate-900 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span><strong>Safety Disclaimer:</strong> This app helps you follow the schedule given by your doctor. It does not provide medical advice.</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="toggle-contrast" onclick="toggleHighContrast()" class="hover:underline text-xs bg-amber-600/30 px-2 py-0.5 rounded">High Contrast</button>
+        <button id="toggle-large-text" onclick="toggleLargeText()" class="hover:underline text-xs bg-amber-600/30 px-2 py-0.5 rounded">Large Text</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Navigation Bar -->
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('dashboard')">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-teal-500 flex items-center justify-center text-white shadow-md font-extrabold text-xl">
+          M
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight text-slate-900">Medi<span class="text-brand-600">Sync</span></span>
+          <span class="hidden sm:inline-block text-xs text-slate-500 ml-2 font-medium">Healthcare Schedule & Adherence</span>
+        </div>
+      </div>
+
+      <!-- User Info & Action Badges -->
+      <div id="nav-user-controls" class="hidden flex items-center gap-3 sm:gap-4">
+        <!-- Guardian Safety Mode Badge -->
+        <div id="guardian-badge" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          <span>Guardian Safety Mode (Age &ge; 60)</span>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="hidden md:flex items-center space-x-1 border-r border-slate-200 pr-4">
+          <button onclick="navigate('dashboard')" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-semibold text-brand-600 hover:bg-slate-100" data-page="dashboard">Today</button>
+          <button onclick="navigate('timeline')" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100" data-page="timeline">Timeline</button>
+          <button onclick="navigate('reports')" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100" data-page="reports">Doctor Report</button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div class="text-right hidden sm:block">
+            <div id="nav-user-name" class="text-sm font-bold text-slate-800">Patient</div>
+            <div id="nav-user-age" class="text-xs text-slate-500">Age: --</div>
+          </div>
+          <button onclick="logout()" title="Logout" class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Top Announcement or Guardian Prompt for Elderly -->
+  <div id="guardian-prompt-banner" class="hidden bg-indigo-50 border-b border-indigo-100 px-4 py-2 text-sm text-indigo-900 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto w-full flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🛡️</span>
+        <span><strong>Guardian Safety Mode Active:</strong> Automatic escalation alerts enabled for emergency contacts if medication alarms are missed.</span>
+      </div>
+      <button onclick="openEmergencyModal()" class="text-xs font-bold text-indigo-700 underline hover:text-indigo-900">View Contacts</button>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ==================== VIEW 1: AUTH SCREEN (SIGN IN / SIGN UP) ==================== -->
+    <section id="view-auth" class="max-w-xl mx-auto py-8">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-teal-500 flex items-center justify-center text-white mx-auto shadow-lg text-3xl font-extrabold mb-3">
+          M
+        </div>
+        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Welcome to MediSync</h1>
+        <p class="text-slate-600 mt-2 text-sm sm:text-base">
+          <em>"Don't just remind patients about tablets. Keep your entire healthcare schedule organized, track what happened, and produce a factual report for your doctor."</em>
+        </p>
+      </div>
+
+      <!-- Auth Box -->
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <!-- Auth Tabs -->
+        <div class="flex border-b border-slate-200 bg-slate-50">
+          <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-3 text-center text-sm font-bold text-brand-600 border-b-2 border-brand-600 bg-white">
+            Log In
+          </button>
+          <button id="tab-signup" onclick="switchAuthTab('signup')" class="flex-1 py-3 text-center text-sm font-bold text-slate-500 hover:text-slate-800">
+            Create Patient Account
+          </button>
+        </div>
+
+        <div class="p-6 sm:p-8">
+          <!-- SIGN IN FORM -->
+          <form id="form-login" onsubmit="handleLogin(event)" class="space-y-5">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email ID</label>
+              <input type="email" id="login-email" required placeholder="patient@example.com" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition">
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2">
+              <span>Sign In to MediSync</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </button>
+
+            <!-- Quick Demo Accounts -->
+            <div class="pt-4 border-t border-slate-100">
+              <p class="text-xs font-semibold text-slate-500 mb-2">Or test with 1-click preset profiles:</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button type="button" onclick="quickLoginDemo(68)" class="text-left px-3 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-xs font-medium text-indigo-900 transition">
+                  👵 <strong>Elderly (Age 68)</strong><br/><span class="text-[11px] text-indigo-700">Guardian Safety Mode Active</span>
+                </button>
+                <button type="button" onclick="quickLoginDemo(32)" class="text-left px-3 py-2 rounded-lg bg-teal-50 hover:bg-teal-100 border border-teal-200 text-xs font-medium text-teal-900 transition">
+                  👨 <strong>Young Adult (Age 32)</strong><br/><span class="text-[11px] text-teal-700">Standard Healthcare Profile</span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <!-- SIGN UP FORM -->
+          <form id="form-signup" onsubmit="handleSignup(event)" class="hidden space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Patient Full Name *</label>
+                <input type="text" id="signup-name" required placeholder="John Doe" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email ID *</label>
+                <input type="email" id="signup-email" required placeholder="john@example.com" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Patient Age *</label>
+                <input type="number" id="signup-age" min="1" max="120" required placeholder="65" oninput="checkAgeGuardianNotice(this.value)" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Known Drug Allergies</label>
+                <input type="text" id="signup-allergies" placeholder="e.g. Penicillin, Sulfa" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-brand-500">
+              </div>
+            </div>
+
+            <!-- Dynamic Guardian Age Badge Notice -->
+            <div id="signup-guardian-alert" class="hidden p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+              🛡️ <strong>Guardian Safety Mode will be auto-enabled</strong> (Age &ge; 60). Escalation calls and notifications will protect the patient.
+            </div>
+
+            <!-- 2 Emergency Contacts (per user requirement) -->
+            <div class="border-t border-slate-200 pt-3">
+              <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span>🚨 Emergency Contact 1 (Primary Call Escalation)</span>
+              </h4>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input type="text" id="signup-c1-name" required placeholder="Contact 1 Name" class="px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500">
+                <input type="tel" id="signup-c1-phone" required placeholder="Phone (+91 / Mobile)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500">
+                <input type="text" id="signup-c1-rel" placeholder="Relation (Son/Daughter)" value="Son" class="px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500">
+              </div>
+            </div>
+
+            <div class="pt-2">
+              <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span>🚨 Emergency Contact 2 (Secondary Fallback)</span>
+              </h4>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input type="text" id="signup-c2-name" required placeholder="Contact 2 Name" class="px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500">
+                <input type="tel" id="signup-c2-phone" required placeholder="Phone (+91 / Mobile)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500">
+                <input type="text" id="signup-c2-rel" placeholder="Relation (Spouse/Relative)" value="Spouse" class="px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500">
+              </div>
+            </div>
+
+            <div class="pt-2">
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Emergency Alert Email *</label>
+              <input type="email" id="signup-emergency-email" required placeholder="guardian.alerts@example.com" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500">
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-sm shadow-md transition-colors mt-2">
+              Register & Setup Profile
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: PATIENT DASHBOARD ==================== -->
+    <section id="view-dashboard" class="hidden space-y-6">
+
+      <!-- Hero Header & Quick Actions -->
+      <div class="bg-gradient-to-r from-brand-700 via-brand-600 to-teal-600 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-white/20 backdrop-blur-sm">Patient Portal</span>
+              <span id="hero-date" class="text-xs text-brand-100">Today</span>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Good Day, <span id="dash-patient-name">Patient</span></h2>
+            <p class="text-brand-100 text-sm mt-1 max-w-xl">
+              Track your daily tablets, injections, lab scans, and doctor appointments with automatic reminder alarms.
+            </p>
+          </div>
+
+          <!-- Primary Call To Action -->
+          <div class="flex flex-wrap gap-2.5">
+            <button onclick="openUploadModal()" class="px-4 py-2.5 bg-white text-brand-700 hover:bg-brand-50 font-bold text-sm rounded-xl shadow-md transition flex items-center gap-2 tap-target">
+              <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              <span>Upload Prescription</span>
+            </button>
+            <button onclick="seedDemoData()" class="px-3 py-2 bg-brand-800/80 hover:bg-brand-800 text-brand-100 font-semibold text-xs rounded-xl border border-white/20 transition flex items-center gap-1.5" title="Preload sample medical schedule for testing">
+              <span>⚡ Preload Demo History</span>
+            </button>
+            <button onclick="navigate('reports')" class="px-3.5 py-2.5 bg-teal-500 hover:bg-teal-400 text-white font-bold text-sm rounded-xl shadow transition flex items-center gap-1.5">
+              <span>🩺 Doctor Report</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Summary Bar -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-lg font-bold">💊</div>
+          <div>
+            <div id="metric-meds" class="text-xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs text-slate-500 font-medium">Medicines Today</div>
+          </div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-lg font-bold">💉</div>
+          <div>
+            <div id="metric-injections" class="text-xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs text-slate-500 font-medium">Injections</div>
+          </div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center text-lg font-bold">🔬</div>
+          <div>
+            <div id="metric-scans" class="text-xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs text-slate-500 font-medium">Diagnostic Scans</div>
+          </div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-lg font-bold">🩺</div>
+          <div>
+            <div id="metric-appts" class="text-xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs text-slate-500 font-medium">Consultations</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: TODAY'S CATEGORIZED SCHEDULE -->
+      <div class="space-y-6">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <span>📅 Today's Unified Healthcare Schedule</span>
+            <span class="text-xs font-normal text-slate-500">Categorized by event type</span>
+          </h3>
+          <button onclick="loadTodaySchedule()" class="text-xs font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh
+          </button>
+        </div>
+
+        <!-- 1. Tablets & Medicines -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">💊</span>
+              <h4 class="font-bold text-slate-900 text-base">Medicines & Tablets</h4>
+              <span id="badge-med-count" class="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <span class="text-xs text-slate-400">3-Attempt Escalation Engine Active</span>
+          </div>
+          <div id="list-today-meds" class="space-y-3">
+            <!-- Dynamically populated -->
+            <div class="text-center py-6 text-slate-400 text-sm">No medicine doses scheduled for today yet. Upload a prescription above!</div>
+          </div>
+        </div>
+
+        <!-- 2. Injections -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">💉</span>
+              <h4 class="font-bold text-slate-900 text-base">Injections & Clinical Doses</h4>
+              <span id="badge-inj-count" class="text-xs bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <span class="text-xs text-slate-400">High-Priority Reminders</span>
+          </div>
+          <div id="list-today-injections" class="space-y-3">
+            <div class="text-center py-6 text-slate-400 text-sm">No injections scheduled for today.</div>
+          </div>
+        </div>
+
+        <!-- 3. Diagnostic Scans & Lab Tests -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🔬</span>
+              <h4 class="font-bold text-slate-900 text-base">Diagnostic Tests & Scans</h4>
+              <span id="badge-scan-count" class="text-xs bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <span class="text-xs text-slate-400">Preparation & Lab Guidance</span>
+          </div>
+          <div id="list-today-scans" class="space-y-3">
+            <div class="text-center py-6 text-slate-400 text-sm">No diagnostic tests or scans due today.</div>
+          </div>
+        </div>
+
+        <!-- 4. Follow-up / Doctor Appointments -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🩺</span>
+              <h4 class="font-bold text-slate-900 text-base">Doctor Consultations & Follow-ups</h4>
+              <span id="badge-appt-count" class="text-xs bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <span class="text-xs text-slate-400">Advance Check-ins</span>
+          </div>
+          <div id="list-today-appts" class="space-y-3">
+            <div class="text-center py-6 text-slate-400 text-sm">No clinical appointments scheduled for today.</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 3: UNIFIED TIMELINE & HISTORY ==================== -->
+    <section id="view-timeline" class="hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-900">Unified Healthcare Timeline</h2>
+          <p class="text-sm text-slate-500">Permanent chronological record of all past and upcoming events.</p>
+        </div>
+        <!-- Filters -->
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="filter-category" onchange="loadTimeline()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none">
+            <option value="all">All Categories</option>
+            <option value="medicine">💊 Medicines</option>
+            <option value="injection">💉 Injections</option>
+            <option value="scan">🔬 Scans & Tests</option>
+            <option value="appointment">🩺 Consultations</option>
+          </select>
+          <select id="filter-state" onchange="loadTimeline()" class="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none">
+            <option value="all">All States</option>
+            <option value="Upcoming">Upcoming</option>
+            <option value="Taken">Taken</option>
+            <option value="Completed">Completed</option>
+            <option value="Delayed">Delayed</option>
+            <option value="Missed">Missed</option>
+            <option value="Unresolved">Unresolved</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Timeline Container -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+        <div id="timeline-list" class="space-y-4 relative before:absolute before:inset-0 before:left-5 before:w-0.5 before:bg-slate-200">
+          <div class="text-center py-8 text-slate-400">Loading timeline...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: CONSULTATION REPORT ==================== -->
+    <section id="view-reports" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs">
+        <!-- Report Header Bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-xs font-extrabold bg-blue-100 text-blue-800">MEDISYNC REPORT</span>
+              <span class="text-xs text-slate-500">For Physician Consultation</span>
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-900 mt-1">Healthcare Activity & Adherence Report</h2>
+            <p class="text-xs text-slate-500 mt-1">
+              Factual summary compiled from patient-confirmed schedule entries, reminder responses, and escalation actions.
+            </p>
+          </div>
+          <!-- Download Official PDF Button -->
+          <div class="flex items-center gap-2">
+            <button onclick="downloadOfficialPDF()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl shadow-md transition flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <span>Download Official PDF (A4)</span>
+            </button>
+            <button onclick="window.print()" class="px-3 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-sm rounded-xl transition">
+              Print
+            </button>
+          </div>
+        </div>
+
+        <!-- Adherence Score Card -->
+        <div class="my-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="md:col-span-1 bg-gradient-to-br from-brand-50 to-blue-50 border border-brand-200 rounded-xl p-5 text-center flex flex-col justify-center items-center">
+            <div class="text-xs font-bold text-brand-800 uppercase tracking-wider mb-1">Adherence Rate</div>
+            <div id="rep-adherence-pct" class="text-4xl font-extrabold text-brand-600">--%</div>
+            <div class="text-[11px] text-slate-500 mt-2">Formula: (Taken + Delayed) &divide; (Total Due) &times; 100</div>
+          </div>
+
+          <div class="md:col-span-3 grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div class="text-center p-2">
+              <div id="rep-taken" class="text-2xl font-bold text-emerald-600">0</div>
+              <div class="text-xs text-slate-600 font-medium mt-1">Taken On-Time</div>
+            </div>
+            <div class="text-center p-2">
+              <div id="rep-delayed" class="text-2xl font-bold text-amber-600">0</div>
+              <div class="text-xs text-slate-600 font-medium mt-1">Delayed (&gt;30m)</div>
+            </div>
+            <div class="text-center p-2">
+              <div id="rep-missed" class="text-2xl font-bold text-red-600">0</div>
+              <div class="text-xs text-slate-600 font-medium mt-1">Explicitly Missed</div>
+            </div>
+            <div class="text-center p-2">
+              <div id="rep-unresolved" class="text-2xl font-bold text-purple-600">0</div>
+              <div class="text-xs text-slate-600 font-medium mt-1">Unresolved</div>
+            </div>
+            <div class="text-center p-2">
+              <div id="rep-upcoming" class="text-2xl font-bold text-slate-500">0</div>
+              <div class="text-xs text-slate-600 font-medium mt-1">Upcoming</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: Drug-by-Drug Adherence Breakdown Table -->
+        <div class="space-y-3 mb-8">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">1. Medication Compliance Breakdown (Prescribed Regimen vs Response)</h3>
+            <span class="text-xs text-slate-500">Summary by Medicine</span>
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-2xs">
+            <table class="min-w-full text-left text-xs">
+              <thead class="bg-teal-700 text-white font-bold border-b border-teal-800">
+                <tr>
+                  <th class="p-3">Medicine Name</th>
+                  <th class="p-3">Prescribed Regimen (Dosage & Timing)</th>
+                  <th class="p-3 text-center">Total Doses</th>
+                  <th class="p-3 text-center">Taken On-Time</th>
+                  <th class="p-3 text-center">Delayed Doses (Days)</th>
+                  <th class="p-3 text-center">Missed Doses (Days)</th>
+                  <th class="p-3 text-center">Unresolved</th>
+                  <th class="p-3 text-center">Adherence %</th>
+                </tr>
+              </thead>
+              <tbody id="rep-table-drugs" class="divide-y divide-slate-100 font-medium">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Section 2: Injections, Scans & Appointments Tabular Column -->
+        <div class="space-y-3 mb-8">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">2. Diagnostic Tests, Injections & Consultations Table</h3>
+            <span class="text-xs text-slate-500">Clinical Procedures</span>
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-2xs">
+            <table class="min-w-full text-left text-xs">
+              <thead class="bg-blue-900 text-white font-bold border-b border-blue-950">
+                <tr>
+                  <th class="p-3">Healthcare Category</th>
+                  <th class="p-3">Procedure / Clinical Item</th>
+                  <th class="p-3 text-center">Scheduled Date & Time</th>
+                  <th class="p-3">Preparation & Instructions</th>
+                  <th class="p-3 text-center">Adherence Status</th>
+                  <th class="p-3 text-center">Completed At</th>
+                </tr>
+              </thead>
+              <tbody id="rep-table-procedures" class="divide-y divide-slate-100 font-medium">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Section 3: Detailed Date-wise Adherence History Log Table -->
+        <div class="space-y-3 mb-8">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">3. Daily Patient Adherence Log (Day-by-Day Consultation Record)</h3>
+              <p class="text-xs text-slate-500">Shows exact dates, prescribed timing, delays in minutes, and skipped doses for physician evaluation.</p>
+            </div>
+            <span class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg">Chronological Audit</span>
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-2xs max-h-96 custom-scroll">
+            <table class="min-w-full text-left text-xs">
+              <thead class="bg-slate-800 text-white font-bold sticky top-0 z-10">
+                <tr>
+                  <th class="p-3 text-center">Date</th>
+                  <th class="p-3 text-center">Prescribed Time</th>
+                  <th class="p-3">Medicine / Healthcare Event</th>
+                  <th class="p-3">Prescribed Regimen</th>
+                  <th class="p-3 text-center">Status</th>
+                  <th class="p-3 text-center">Actual Time Logged</th>
+                  <th class="p-3">Delay / Observation Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="rep-table-history" class="divide-y divide-slate-100 font-medium">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Section 3: Escalation & Emergency Log -->
+        <div class="space-y-3 mb-8">
+          <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">3. Escalation & Guardian Notifications</h3>
+          <div id="rep-escalations-list" class="space-y-2">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Section 4: Recorded Factual Observations -->
+        <div class="space-y-3 p-4 rounded-xl bg-blue-50/50 border border-blue-200">
+          <h3 class="text-sm font-bold text-blue-900 uppercase tracking-wider">4. Recorded Factual Observations</h3>
+          <ul id="rep-observations-list" class="list-disc list-inside text-xs text-slate-700 space-y-1">
+            <!-- Observations -->
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODAL: PRESCRIPTION UPLOAD & AI OCR REVIEW ==================== -->
+  <div id="modal-upload" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Upload & Analyze Prescription</h3>
+          <p class="text-xs text-slate-500">Draft items require explicit confirmation before activating alarms.</p>
+        </div>
+        <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body (Two-Step: Step 1 = Upload, Step 2 = Review & Confirm) -->
+      <div class="flex-1 overflow-y-auto p-6 custom-scroll">
+
+        <!-- STEP 1: Upload Controls -->
+        <div id="upload-step-1" class="space-y-6">
+          <!-- Preset Selector for Instant Clinical Testing -->
+          <div class="bg-brand-50/60 border border-brand-200 rounded-xl p-4">
+            <label class="block text-xs font-bold text-brand-900 uppercase tracking-wider mb-1.5">⚡ Instant Preset Prescriptions (Clinical Test Scenarios)</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button type="button" onclick="selectPreset('regimen_1')" class="preset-btn text-left p-3 rounded-lg border border-brand-300 bg-white hover:border-brand-500 text-xs font-semibold text-slate-800 transition">
+                <div class="font-bold text-brand-700">Regimen 1: Multitherapy</div>
+                <div class="text-[11px] text-slate-500 mt-1">Paracetamol 650mg + Amoxicillin + Pantoprazole + Blood Test + Follow-up</div>
+              </button>
+              <button type="button" onclick="selectPreset('regimen_2')" class="preset-btn text-left p-3 rounded-lg border border-slate-200 bg-white hover:border-brand-500 text-xs font-semibold text-slate-800 transition">
+                <div class="font-bold text-brand-700">Regimen 2: Chronic Care</div>
+                <div class="text-[11px] text-slate-500 mt-1">Metformin + Telmisartan + Lantus Insulin Inj. + HbA1c Scan</div>
+              </button>
+              <button type="button" onclick="selectPreset('regimen_3')" class="preset-btn text-left p-3 rounded-lg border border-slate-200 bg-white hover:border-brand-500 text-xs font-semibold text-slate-800 transition">
+                <div class="font-bold text-brand-700">Regimen 3: Ortho & Scan</div>
+                <div class="text-[11px] text-slate-500 mt-1">Aceclofenac + Calcium D3 + Knee MRI Scan + Consultation</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="text-center text-xs font-bold text-slate-400 uppercase tracking-wider">— Or Upload Prescription Document —</div>
+
+          <!-- File Drop Zone -->
+          <div class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50/50" onclick="document.getElementById('prescription-file-input').click()">
+            <input type="file" id="prescription-file-input" accept="image/*,application/pdf" class="hidden" onchange="handleFileSelected(event)">
+            <div class="w-12 h-12 rounded-full bg-brand-100 text-brand-600 mx-auto flex items-center justify-center mb-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+            </div>
+            <div class="text-sm font-bold text-slate-800" id="file-label">Click or Drag & Drop Prescription (JPG, PNG, PDF)</div>
+            <div class="text-xs text-slate-500 mt-1">Supports camera photos, scans, and doctor slips</div>
+          </div>
+
+          <!-- Manual Prescription Text Input (Fallback / Direct) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Prescription Text / Doctor Notes (Optional)</label>
+            <textarea id="prescription-raw-text" rows="3" placeholder="Paste or type prescription lines here (e.g., Tab Paracetamol 650mg 1-1-1 for 5 days after food...)" class="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500"></textarea>
+          </div>
+
+          <button type="button" onclick="analyzePrescription()" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2">
+            <span>Analyse Prescription & Generate Draft Schedule</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+          </button>
+        </div>
+
+        <!-- STEP 2: HUMAN-IN-THE-LOOP REVIEW & CONFIRMATION -->
+        <div id="upload-step-2" class="hidden space-y-6">
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-center gap-2">
+            <span>⚠️</span>
+            <span><strong>Safety Verification Required:</strong> Review every extracted medicine, dosage, injection, and test before activating. Unconfirmed drafts will not generate alarms.</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Left: Document Context -->
+            <div class="md:col-span-1 bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Original Prescription Document</h4>
+              <pre id="review-source-text" class="text-[11px] text-slate-600 whitespace-pre-wrap font-mono max-h-64 overflow-y-auto bg-white p-2.5 rounded border border-slate-200"></pre>
+            </div>
+
+            <!-- Right: Extracted Draft Items List with Confidence & Edits -->
+            <div class="md:col-span-2 space-y-3">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Extracted Schedule Items</h4>
+                <span id="review-items-count" class="text-xs text-slate-500">0 items found</span>
+              </div>
+              <div id="review-draft-list" class="space-y-3 max-h-96 overflow-y-auto pr-1 custom-scroll">
+                <!-- Dynamically populated draft items -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Confirmation Actions -->
+          <div class="border-t border-slate-200 pt-4 flex items-center justify-between">
+            <button onclick="backToUploadStep1()" class="text-xs font-semibold text-slate-600 hover:text-slate-800 px-3 py-2">
+              &larr; Back to Upload
+            </button>
+            <button onclick="confirmSchedule()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg transition flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Confirm & Activate Schedule</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ALARM SIMULATOR & EMERGENCY ESCALATION ==================== -->
+  <div id="modal-alarm" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-4 border-amber-400 text-center relative overflow-hidden">
+      <!-- Animated Bell Icon -->
+      <div id="alarm-icon" class="w-20 h-20 rounded-full bg-amber-100 text-amber-600 mx-auto flex items-center justify-center text-3xl mb-3 shadow-inner">
+        🔔
+      </div>
+
+      <div class="text-xs font-bold text-amber-600 uppercase tracking-widest" id="alarm-attempt-label">MEDISYNC ALARM #1</div>
+      <h3 class="text-2xl font-extrabold text-slate-900 mt-1" id="alarm-item-title">Paracetamol 650mg</h3>
+      <p class="text-sm text-slate-600 mt-1" id="alarm-item-notes">Take 1 tablet with water after food.</p>
+
+      <div class="my-4 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500">
+        Attempt <strong id="alarm-attempt-number">1</strong> of 3. If unconfirmed after 3 attempts, emergency escalation will contact family.
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="space-y-2">
+        <button onclick="handleAlarmResponse('take')" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2">
+          <span>✅ Taken Now</span>
+        </button>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="handleAlarmResponse('snooze')" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition">
+            ⏰ Snooze (+10m)
+          </button>
+          <button onclick="handleAlarmResponse('skip')" class="py-2.5 bg-slate-100 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition">
+            ❌ Skip Dose
+          </button>
+        </div>
+        <button onclick="triggerNextAlarmAttempt()" class="w-full py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold text-xs rounded-xl transition">
+          Simulate No Response &rarr; Next Alarm
+        </button>
+      </div>
+
+      <button onclick="closeAlarmModal()" class="mt-4 text-xs text-slate-400 hover:text-slate-600">Dismiss dialog</button>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: EMERGENCY PHONE CALL & ESCALATION SCREEN ==================== -->
+  <div id="modal-emergency-call" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 text-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-red-500/40 text-center relative overflow-hidden emergency-pulse">
+      <div class="w-20 h-20 rounded-full bg-red-600/20 border-2 border-red-500 text-red-500 mx-auto flex items-center justify-center text-3xl mb-4 animate-bounce">
+        📞
+      </div>
+      <div class="text-xs font-bold text-red-400 uppercase tracking-widest">EMERGENCY ESCALATION ACTIVE</div>
+      <h3 class="text-xl font-extrabold text-white mt-1">Calling Primary Contact</h3>
+      <div class="text-sm font-semibold text-red-300 mt-1" id="emergency-call-target">Family Contact</div>
+
+      <div class="my-4 p-3 bg-slate-800/80 rounded-xl border border-slate-700 text-xs text-slate-300 text-left space-y-1">
+        <p><strong>Reason:</strong> 3 consecutive alarms unanswered for <span id="emergency-call-item" class="text-white font-bold">Medicine</span>.</p>
+        <p><strong>Secondary Fallback:</strong> SMS & Emergency Email notification dispatched to <span id="emergency-call-email" class="text-white font-mono">--</span>.</p>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="acknowledgeEscalation()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-md transition">
+          Acknowledge & Stop Escalation (Patient / Guardian)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: EMERGENCY CONTACTS VIEWER ==================== -->
+  <div id="modal-contacts" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 class="text-base font-bold text-slate-900">Guardian & Emergency Contacts</h3>
+        <button onclick="closeEmergencyModal()" class="text-slate-400 hover:text-slate-700">✕</button>
+      </div>
+      <div class="py-4 space-y-3 text-xs text-slate-700">
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="font-bold text-slate-800 text-sm" id="view-c1-name">Contact 1</div>
+          <div class="text-slate-500">Phone: <span id="view-c1-phone" class="font-mono">--</span></div>
+          <div class="text-slate-500">Role: Primary Call Escalation</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="font-bold text-slate-800 text-sm" id="view-c2-name">Contact 2</div>
+          <div class="text-slate-500">Phone: <span id="view-c2-phone" class="font-mono">--</span></div>
+          <div class="text-slate-500">Role: Secondary Fallback</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="font-bold text-slate-800 text-sm">Emergency Alert Email</div>
+          <div class="text-slate-500 font-mono" id="view-emergency-email">--</div>
+        </div>
+      </div>
+      <button onclick="closeEmergencyModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Global State
+    let currentUser = null;
+    let selectedPresetKey = 'regimen_1';
+    let currentPrescriptionDraft = null;
+    let currentAlarmOccurrence = null;
+    let currentAlarmAttempt = 1;
+    let audioContext = null;
+
+    // Initialize Web Audio synthesizer for alarms
+    function playAlarmTone() {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioContext.currentTime); // A5 note
+        osc.frequency.exponentialRampToValueAtTime(440, audioContext.currentTime + 0.3);
+
+        gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+
+        osc.start();
+        osc.stop(audioContext.currentTime + 0.4);
+      } catch (e) {
+        console.log("Audio alert tone error:", e);
+      }
+    }
+
+    // Voice announcement using Web SpeechSynthesis API
+    function speakVoiceAlert(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // On Load
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('medisync_user');
+      if (savedUser) {
+        try {
+          currentUser = JSON.parse(savedUser);
+          setupUserSession();
+          navigate('dashboard');
+        } catch (e) {
+          showAuthView();
+        }
+      } else {
+        showAuthView();
+      }
+
+      document.getElementById('hero-date').innerText = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'short', day: 'numeric'
+      });
+    });
+
+    // Navigation Router
+    function navigate(viewName) {
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab').forEach(t => {
+        t.classList.remove('text-brand-600', 'bg-slate-100');
+        t.classList.add('text-slate-600');
+      });
+
+      const target = document.getElementById(`view-${viewName}`);
+      if (target) target.classList.remove('hidden');
+
+      const activeTab = document.querySelector(`.nav-tab[data-page="${viewName}"]`);
+      if (activeTab) {
+        activeTab.classList.add('text-brand-600', 'bg-slate-100');
+        activeTab.classList.remove('text-slate-600');
+      }
+
+      if (viewName === 'dashboard') loadTodaySchedule();
+      if (viewName === 'timeline') loadTimeline();
+      if (viewName === 'reports') loadReportSummary();
+    }
+
+    function showAuthView() {
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+      document.getElementById('view-auth').classList.remove('hidden');
+      document.getElementById('nav-user-controls').classList.add('hidden');
+      document.getElementById('guardian-prompt-banner').classList.add('hidden');
+    }
+
+    function switchAuthTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('form-login').classList.toggle('hidden', !isLogin);
+      document.getElementById('form-signup').classList.toggle('hidden', isLogin);
+
+      document.getElementById('tab-login').className = isLogin
+        ? 'flex-1 py-3 text-center text-sm font-bold text-brand-600 border-b-2 border-brand-600 bg-white'
+        : 'flex-1 py-3 text-center text-sm font-bold text-slate-500 hover:text-slate-800';
+
+      document.getElementById('tab-signup').className = !isLogin
+        ? 'flex-1 py-3 text-center text-sm font-bold text-brand-600 border-b-2 border-brand-600 bg-white'
+        : 'flex-1 py-3 text-center text-sm font-bold text-slate-500 hover:text-slate-800';
+    }
+
+    function checkAgeGuardianNotice(ageVal) {
+      const age = parseInt(ageVal, 10);
+      document.getElementById('signup-guardian-alert').classList.toggle('hidden', !(age >= 60));
+    }
+
+    // Auth Handlers
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          currentUser = data.user;
+          localStorage.setItem('medisync_user', JSON.stringify(currentUser));
+          setupUserSession();
+          navigate('dashboard');
+        } else {
+          alert(data.detail || "Login failed");
+        }
+      } catch (err) {
+        alert("Server error connecting to MediSync");
+      }
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById('signup-name').value,
+        email: document.getElementById('signup-email').value,
+        age: parseInt(document.getElementById('signup-age').value, 10),
+        allergies: document.getElementById('signup-allergies').value,
+        emergency_contact_1_name: document.getElementById('signup-c1-name').value,
+        emergency_contact_1_phone: document.getElementById('signup-c1-phone').value,
+        emergency_contact_1_relation: document.getElementById('signup-c1-rel').value,
+        emergency_contact_2_name: document.getElementById('signup-c2-name').value,
+        emergency_contact_2_phone: document.getElementById('signup-c2-phone').value,
+        emergency_contact_2_relation: document.getElementById('signup-c2-rel').value,
+        emergency_email: document.getElementById('signup-emergency-email').value
+      };
+
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          currentUser = data.user;
+          localStorage.setItem('medisync_user', JSON.stringify(currentUser));
+          setupUserSession();
+          navigate('dashboard');
+        } else {
+          alert(data.detail || "Sign up failed");
+        }
+      } catch (err) {
+        alert("Server error connecting to MediSync");
+      }
+    }
+
+    async function quickLoginDemo(age) {
+      const email = age >= 60 ? 'elderly.patient@medisync.local' : 'young.adult@medisync.local';
+      // Try login first, if not exist sign up
+      let res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email })
+      });
+      let data = await res.json();
+      if (!res.ok) {
+        const name = age >= 60 ? 'K. Sundaram (Elderly Patient)' : 'Arun Kumar';
+        res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            name,
+            email,
+            age,
+            allergies: age >= 60 ? 'Penicillin, Sulfa' : 'None',
+            emergency_contact_1_name: age >= 60 ? 'Priya (Daughter)' : 'Meena (Spouse)',
+            emergency_contact_1_phone: '+91 98401 23456',
+            emergency_contact_1_relation: age >= 60 ? 'Daughter' : 'Spouse',
+            emergency_contact_2_name: age >= 60 ? 'Dr. Ramesh (Family Friend)' : 'Karthik (Brother)',
+            emergency_contact_2_phone: '+91 98402 67890',
+            emergency_contact_2_relation: 'Family Contact',
+            emergency_email: 'guardian.alerts@medisync.local'
+          })
+        });
+        data = await res.json();
+      }
+
+      if (data.user) {
+        currentUser = data.user;
+        localStorage.setItem('medisync_user', JSON.stringify(currentUser));
+        setupUserSession();
+        // Seed demo automatically
+        await fetch(`/api/seed-demo/${currentUser.id}`, { method: 'POST' });
+        navigate('dashboard');
+      }
+    }
+
+    function setupUserSession() {
+      if (!currentUser) return;
+      document.getElementById('nav-user-controls').classList.remove('hidden');
+      document.getElementById('nav-user-name').innerText = currentUser.name;
+      document.getElementById('nav-user-age').innerText = `Age: ${currentUser.age}`;
+      document.getElementById('dash-patient-name').innerText = currentUser.name.split(' ')[0];
+
+      const isElderly = currentUser.age >= 60 || currentUser.guardian_mode_enabled;
+      document.getElementById('guardian-badge').classList.toggle('hidden', !isElderly);
+      document.getElementById('guardian-badge').classList.toggle('flex', isElderly);
+      document.getElementById('guardian-prompt-banner').classList.toggle('hidden', !isElderly);
+
+      // Setup contacts modal view
+      document.getElementById('view-c1-name').innerText = `${currentUser.emergency_contact_1_name} (${currentUser.emergency_contact_1_relation || 'Primary'})`;
+      document.getElementById('view-c1-phone').innerText = currentUser.emergency_contact_1_phone;
+      document.getElementById('view-c2-name').innerText = `${currentUser.emergency_contact_2_name} (${currentUser.emergency_contact_2_relation || 'Secondary'})`;
+      document.getElementById('view-c2-phone').innerText = currentUser.emergency_contact_2_phone;
+      document.getElementById('view-emergency-email').innerText = currentUser.emergency_email;
+    }
+
+    function logout() {
+      localStorage.removeItem('medisync_user');
+      currentUser = null;
+      showAuthView();
+    }
+
+    // Toggle Accessibility Modes
+    function toggleHighContrast() {
+      document.body.classList.toggle('high-contrast');
+    }
+    function toggleLargeText() {
+      document.body.classList.toggle('accessible-mode');
+    }
+
+    // Today's Schedule Loading
+    async function loadTodaySchedule() {
+      if (!currentUser) return;
+      try {
+        const res = await fetch(`/api/schedule/today/${currentUser.id}`);
+        const data = await res.json();
+
+        // Metrics
+        document.getElementById('metric-meds').innerText = data.medicines.length;
+        document.getElementById('metric-injections').innerText = data.injections.length;
+        document.getElementById('metric-scans').innerText = data.scans.length;
+        document.getElementById('metric-appts').innerText = data.appointments.length;
+
+        document.getElementById('badge-med-count').innerText = data.medicines.length;
+        document.getElementById('badge-inj-count').innerText = data.injections.length;
+        document.getElementById('badge-scan-count').innerText = data.scans.length;
+        document.getElementById('badge-appt-count').innerText = data.appointments.length;
+
+        renderCategoryList('list-today-meds', data.medicines, 'medicine');
+        renderCategoryList('list-today-injections', data.injections, 'injection');
+        renderCategoryList('list-today-scans', data.scans, 'scan');
+        renderCategoryList('list-today-appts', data.appointments, 'appointment');
+      } catch (e) {
+        console.error("Error loading today schedule:", e);
+      }
+    }
+
+    function renderCategoryList(containerId, items, category) {
+      const container = document.getElementById(containerId);
+      if (!items || items.length === 0) {
+        container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">No ${category} events scheduled for today.</div>`;
+        return;
+      }
+
+      container.innerHTML = items.map(item => {
+        const timeStr = item.scheduled_at ? item.scheduled_at.substring(11, 16) : '--:--';
+        const isCompleted = ['Taken', 'Completed', 'Attended'].includes(item.state);
+        const isMissed = item.state === 'Missed';
+        const isDelayed = item.state === 'Delayed';
+        const isUnresolved = item.state === 'Unresolved';
+
+        let stateBadgeClass = "bg-slate-100 text-slate-700";
+        if (isCompleted) stateBadgeClass = "bg-emerald-100 text-emerald-800 border border-emerald-300";
+        if (isDelayed) stateBadgeClass = "bg-amber-100 text-amber-800 border border-amber-300";
+        if (isMissed) stateBadgeClass = "bg-rose-100 text-rose-800 border border-rose-300";
+        if (isUnresolved) stateBadgeClass = "bg-purple-100 text-purple-800 border border-purple-300";
+
+        const primaryActionLabel = category === 'medicine' ? 'Take Now' :
+                                   category === 'injection' ? 'Complete' :
+                                   category === 'scan' ? 'Mark Completed' : 'Mark Attended';
+
+        return `
+          <div class="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-start gap-3">
+              <div class="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs text-center shrink-0">
+                ${formatTime12h(timeStr)}
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-900 text-sm">${escapeHtml(item.title)}</span>
+                  <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${stateBadgeClass}">${item.state}</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-0.5">${escapeHtml(item.notes || 'As prescribed by physician')}</div>
+              </div>
+            </div>
+
+            <!-- Action buttons per item -->
+            <div class="flex items-center gap-1.5 shrink-0">
+              ${!isCompleted ? `
+                <button onclick="takeAction('${item.id}', '${category === 'medicine' ? 'take' : category === 'injection' ? 'complete' : category === 'scan' ? 'complete' : 'attend'}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition">
+                  ${primaryActionLabel}
+                </button>
+                <button onclick="takeAction('${item.id}', 'snooze')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition" title="Snooze 10m">
+                  ⏰ Snooze
+                </button>
+                <button onclick="takeAction('${item.id}', 'skip')" class="px-2.5 py-1.5 hover:bg-rose-50 text-rose-600 font-semibold text-xs rounded-lg transition" title="Skip">
+                  Skip
+                </button>
+                <button onclick="openAlarmSimulation('${item.id}', '${escapeHtml(item.title)}', '${escapeHtml(item.notes)}') " class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-xs rounded-lg border border-amber-200 transition" title="Test Alarm Engine">
+                  🔔 Test Alarm
+                </button>
+              ` : `
+                <span class="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+                  ✓ Recorded at ${item.completed_at ? item.completed_at.substring(11, 16) : 'Scheduled'}
+                </span>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatTime12h(time24) {
+      if (!time24 || !time24.includes(':')) return time24;
+      const [h, m] = time24.split(':').map(Number);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:${m < 10 ? '0' + m : m} ${ampm}`;
+    }
+
+    async function takeAction(occurrenceId, action) {
+      try {
+        const res = await fetch('/api/events/action', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ occurrence_id: occurrenceId, action })
+        });
+        const data = await res.json();
+        if (data.success) {
+          loadTodaySchedule();
+        }
+      } catch (e) {
+        alert("Action error: " + e);
+      }
+    }
+
+    // Prescription Upload & Review Modal Logic
+    function openUploadModal() {
+      document.getElementById('modal-upload').classList.remove('hidden');
+      document.getElementById('upload-step-1').classList.remove('hidden');
+      document.getElementById('upload-step-2').classList.add('hidden');
+      selectPreset('regimen_1');
+    }
+
+    function closeUploadModal() {
+      document.getElementById('modal-upload').classList.add('hidden');
+    }
+
+    function selectPreset(presetKey) {
+      selectedPresetKey = presetKey;
+      document.querySelectorAll('.preset-btn').forEach(b => {
+        b.classList.remove('border-brand-500', 'bg-brand-50');
+        b.classList.add('border-slate-200');
+      });
+      event?.currentTarget?.classList?.add('border-brand-500', 'bg-brand-50');
+    }
+
+    function handleFileSelected(e) {
+      const file = e.target.files[0];
+      if (file) {
+        document.getElementById('file-label').innerText = `Selected: ${file.name}`;
+      }
+    }
+
+    async function analyzePrescription() {
+      if (!currentUser) return;
+      const formData = new FormData();
+      formData.append('user_id', currentUser.id);
+
+      const fileInput = document.getElementById('prescription-file-input');
+      const rawText = document.getElementById('prescription-raw-text').value;
+
+      if (fileInput.files.length > 0) {
+        formData.append('file', fileInput.files[0]);
+      } else if (rawText.trim().length > 0) {
+        formData.append('raw_text', rawText);
+      } else {
+        formData.append('preset_key', selectedPresetKey);
+      }
+
+      try {
+        const res = await fetch('/api/prescriptions/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentPrescriptionDraft = data;
+          showReviewStep(data);
+        } else {
+          alert("Extraction failed: " + data.detail);
+        }
+      } catch (e) {
+        alert("Extraction error: " + e);
+      }
+    }
+
+    function showReviewStep(draft) {
+      document.getElementById('upload-step-1').classList.add('hidden');
+      document.getElementById('upload-step-2').classList.remove('hidden');
+
+      document.getElementById('review-source-text').innerText = draft.source_text || "Prescription text preview";
+      document.getElementById('review-items-count').innerText = `${draft.draft_items.length} items extracted`;
+
+      const listContainer = document.getElementById('review-draft-list');
+      listContainer.innerHTML = draft.draft_items.map((item, idx) => {
+        const confPct = Math.round(item.confidence * 100);
+        const confBadge = confPct >= 85 ?
+          `<span class="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded">High Confidence (${confPct}%)</span>` :
+          `<span class="bg-amber-100 text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded">⚠️ Please Verify (${confPct}%)</span>`;
+
+        const d = item.data;
+        const icon = item.category === 'medicine' ? '💊' :
+                     item.category === 'injection' ? '💉' :
+                     item.category === 'scan' ? '🔬' : '🩺';
+
+        return `
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 font-bold text-slate-900 text-xs sm:text-sm">
+                <span>${icon}</span>
+                <span>${escapeHtml(d.title || d.medicine_name)}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                ${confBadge}
+                <label class="flex items-center gap-1 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input type="checkbox" id="draft-confirm-${idx}" checked class="rounded text-brand-600">
+                  <span>Include</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Editable Fields -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Dosage / Strength</span>
+                <input type="text" id="draft-strength-${idx}" value="${escapeHtml(d.strength || d.dosage || '')}" class="w-full px-2 py-1 border rounded text-xs bg-slate-50">
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Frequency</span>
+                <input type="text" id="draft-freq-${idx}" value="${escapeHtml(d.frequency || '')}" class="w-full px-2 py-1 border rounded text-xs bg-slate-50">
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Duration (Days)</span>
+                <input type="number" id="draft-days-${idx}" value="${d.days || 5}" class="w-full px-2 py-1 border rounded text-xs bg-slate-50">
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase">Food / Prep Note</span>
+                <input type="text" id="draft-food-${idx}" value="${escapeHtml(d.food_relation || d.preparation_notes || '')}" class="w-full px-2 py-1 border rounded text-xs bg-slate-50">
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function backToUploadStep1() {
+      document.getElementById('upload-step-1').classList.remove('hidden');
+      document.getElementById('upload-step-2').classList.add('hidden');
+    }
+
+    async function confirmSchedule() {
+      if (!currentPrescriptionDraft || !currentUser) return;
+
+      const confirmedItems = [];
+      currentPrescriptionDraft.draft_items.forEach((item, idx) => {
+        const isChecked = document.getElementById(`draft-confirm-${idx}`)?.checked;
+        if (isChecked) {
+          const updatedData = { ...item.data };
+          updatedData.strength = document.getElementById(`draft-strength-${idx}`)?.value || updatedData.strength;
+          updatedData.dosage = document.getElementById(`draft-strength-${idx}`)?.value || updatedData.dosage;
+          updatedData.frequency = document.getElementById(`draft-freq-${idx}`)?.value || updatedData.frequency;
+          updatedData.days = parseInt(document.getElementById(`draft-days-${idx}`)?.value || '5', 10);
+          updatedData.food_relation = document.getElementById(`draft-food-${idx}`)?.value || updatedData.food_relation;
+          updatedData.preparation_notes = document.getElementById(`draft-food-${idx}`)?.value || updatedData.preparation_notes;
+
+          confirmedItems.push({
+            id: item.id,
+            category: item.category,
+            data: updatedData,
+            confirmed: true
+          });
+        }
+      });
+
+      if (confirmedItems.length === 0) {
+        alert("Please select at least one item to confirm.");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/prescriptions/confirm', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            prescription_id: currentPrescriptionDraft.prescription_id,
+            items: confirmedItems
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`Schedule Activated! Generated ${data.occurrences_created} discrete events.`);
+          closeUploadModal();
+          loadTodaySchedule();
+        } else {
+          alert(data.detail || "Confirmation error");
+        }
+      } catch (e) {
+        alert("Server error confirming schedule: " + e);
+      }
+    }
+
+    // Alarm Simulation & Escalation System
+    function openAlarmSimulation(occurrenceId, title, notes) {
+      currentAlarmOccurrence = { id: occurrenceId, title, notes };
+      currentAlarmAttempt = 1;
+
+      document.getElementById('alarm-item-title').innerText = title;
+      document.getElementById('alarm-item-notes').innerText = notes || "Take as prescribed";
+      document.getElementById('alarm-attempt-label').innerText = `MEDISYNC ALARM #1`;
+      document.getElementById('alarm-attempt-number').innerText = `1`;
+
+      document.getElementById('modal-alarm').classList.remove('hidden');
+      playAlarmTone();
+      speakVoiceAlert(`MediSync Alarm: Time for your dose of ${title}.`);
+    }
+
+    function closeAlarmModal() {
+      document.getElementById('modal-alarm').classList.add('hidden');
+    }
+
+    async function handleAlarmResponse(action) {
+      if (!currentAlarmOccurrence) return;
+      await takeAction(currentAlarmOccurrence.id, action);
+      closeAlarmModal();
+    }
+
+    async function triggerNextAlarmAttempt() {
+      if (!currentAlarmOccurrence) return;
+      currentAlarmAttempt++;
+
+      if (currentAlarmAttempt <= 2) {
+        document.getElementById('alarm-attempt-label').innerText = `MEDISYNC ALARM #${currentAlarmAttempt}`;
+        document.getElementById('alarm-attempt-number').innerText = `${currentAlarmAttempt}`;
+        playAlarmTone();
+        speakVoiceAlert(`MediSync Urgent Reminder Attempt ${currentAlarmAttempt} for ${currentAlarmOccurrence.title}.`);
+      } else {
+        // Attempt 3 reached -> Escalation!
+        closeAlarmModal();
+        try {
+          const res = await fetch('/api/events/simulate-full-escalation', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({ occurrence_id: currentAlarmOccurrence.id })
+          });
+          const data = await res.json();
+          if (data.escalation_triggered) {
+            triggerEmergencyScreen(data.escalation_data);
+          }
+        } catch (e) {
+          alert("Escalation error: " + e);
+        }
+      }
+    }
+
+    function triggerEmergencyScreen(esc) {
+      document.getElementById('emergency-call-target').innerText = `${esc.emergency_contact_1} | ${esc.emergency_contact_2}`;
+      document.getElementById('emergency-call-item').innerText = esc.item_title;
+      document.getElementById('emergency-call-email').innerText = esc.emergency_email;
+      document.getElementById('modal-emergency-call').classList.remove('hidden');
+
+      playAlarmTone();
+      speakVoiceAlert(`Emergency Escalation: Outgoing call to ${esc.emergency_contact_1}. Patient has missed consecutive alarms for ${esc.item_title}.`);
+    }
+
+    function acknowledgeEscalation() {
+      document.getElementById('modal-emergency-call').classList.add('hidden');
+      if (currentAlarmOccurrence) {
+        takeAction(currentAlarmOccurrence.id, 'take');
+      }
+      alert("Escalation acknowledged. Emergency call ended and recorded in audit log.");
+    }
+
+    // Emergency Contacts Modal
+    function openEmergencyModal() {
+      document.getElementById('modal-contacts').classList.remove('hidden');
+    }
+    function closeEmergencyModal() {
+      document.getElementById('modal-contacts').classList.add('hidden');
+    }
+
+    // Timeline Loading
+    async function loadTimeline() {
+      if (!currentUser) return;
+      const cat = document.getElementById('filter-category').value;
+      const state = document.getElementById('filter-state').value;
+
+      try {
+        const res = await fetch(`/api/schedule/timeline/${currentUser.id}?category=${cat}&state=${state}`);
+        const data = await res.json();
+        const container = document.getElementById('timeline-list');
+
+        if (!data.events || data.events.length === 0) {
+          container.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No events match filter criteria.</div>`;
+          return;
+        }
+
+        container.innerHTML = data.events.map(ev => {
+          const isCompleted = ['Taken', 'Completed', 'Attended'].includes(ev.state);
+          const dotColor = isCompleted ? 'bg-emerald-500' :
+                           ev.state === 'Delayed' ? 'bg-amber-500' :
+                           ev.state === 'Missed' ? 'bg-rose-500' :
+                           ev.state === 'Unresolved' ? 'bg-purple-600' : 'bg-brand-500';
+
+          const icon = ev.category === 'medicine' ? '💊' :
+                       ev.category === 'injection' ? '💉' :
+                       ev.category === 'scan' ? '🔬' : '🩺';
+
+          return `
+            <div class="relative pl-10">
+              <div class="absolute left-3.5 -translate-x-1/2 top-1.5 w-3.5 h-3.5 rounded-full ${dotColor} ring-4 ring-white shadow"></div>
+              <div class="p-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/50 transition">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                    <span>${icon}</span>
+                    <span>${escapeHtml(ev.title)}</span>
+                    <span class="text-slate-400 font-normal">(${ev.category})</span>
+                  </div>
+                  <span class="text-xs font-bold ${isCompleted ? 'text-emerald-700' : 'text-slate-600'}">${ev.state}</span>
+                </div>
+                <div class="text-xs text-slate-500 mt-1 flex items-center justify-between">
+                  <span>Scheduled: ${ev.scheduled_at.replace('T', ' ')}</span>
+                  ${ev.completed_at ? `<span>Actual: ${ev.completed_at.replace('T', ' ')}</span>` : ''}
+                </div>
+                ${ev.notes ? `<div class="text-[11px] text-slate-400 mt-1">${escapeHtml(ev.notes)}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error("Timeline error:", e);
+      }
+    }
+
+    // Consultation Report Loading & PDF Download
+    async function loadReportSummary() {
+      if (!currentUser) return;
+      try {
+        const res = await fetch(`/api/reports/summary/${currentUser.id}`);
+        const data = await res.json();
+        if (!data.success) return;
+
+        const rep = data.report;
+        const med = rep.med_stats;
+
+        document.getElementById('rep-adherence-pct').innerText = `${med.adherence_pct}%`;
+        document.getElementById('rep-taken').innerText = med.taken;
+        document.getElementById('rep-delayed').innerText = med.delayed;
+        document.getElementById('rep-missed').innerText = med.missed;
+        document.getElementById('rep-unresolved').innerText = med.unresolved;
+        document.getElementById('rep-upcoming').innerText = med.upcoming;
+
+        // 1. Tabular Column: Medication Breakdown
+        const tbodyDrugs = document.getElementById('rep-table-drugs');
+        const drugs = Object.entries(med.drug_breakdown);
+        if (drugs.length === 0) {
+          tbodyDrugs.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">No confirmed medications recorded.</td></tr>`;
+        } else {
+          tbodyDrugs.innerHTML = drugs.map(([name, s]) => {
+            const due = s.total - s.upcoming;
+            const rate = due > 0 ? Math.round(((s.taken + s.delayed) / due) * 100) : 100;
+            const delayedDays = s.days_delayed_count !== undefined ? `${s.delayed} <span class="text-[10px] text-amber-700">(${s.days_delayed_count}d)</span>` : s.delayed;
+            const missedDays = s.days_missed_count !== undefined ? `${s.missed} <span class="text-[10px] text-rose-700">(${s.days_missed_count}d)</span>` : s.missed;
+
+            return `
+              <tr class="hover:bg-slate-50 transition">
+                <td class="p-3 font-bold text-slate-900">${escapeHtml(name)}</td>
+                <td class="p-3 text-slate-600 text-xs">${escapeHtml(s.regimen || 'As prescribed')}</td>
+                <td class="p-3 text-center font-semibold">${s.total}</td>
+                <td class="p-3 text-center text-emerald-600 font-bold">${s.taken}</td>
+                <td class="p-3 text-center text-amber-600 font-bold">${delayedDays}</td>
+                <td class="p-3 text-center text-rose-600 font-bold">${missedDays}</td>
+                <td class="p-3 text-center text-purple-600 font-bold">${s.unresolved}</td>
+                <td class="p-3 text-center font-extrabold text-teal-700">${rate}%</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // 2. Tabular Column: Injections, Scans & Consultations
+        const tbodyProc = document.getElementById('rep-table-procedures');
+        if (rep.procedures_list && rep.procedures_list.length > 0) {
+          tbodyProc.innerHTML = rep.procedures_list.map(p => {
+            const isDone = ['Completed', 'Attended'].includes(p.status);
+            const statusClass = isDone ? 'bg-emerald-100 text-emerald-800' :
+                                p.status === 'Delayed' ? 'bg-amber-100 text-amber-800' :
+                                p.status === 'Rescheduled' ? 'bg-blue-100 text-blue-800' :
+                                p.status === 'Missed' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700';
+            return `
+              <tr class="hover:bg-slate-50 transition">
+                <td class="p-3 font-semibold text-slate-800">${escapeHtml(p.category_label)}</td>
+                <td class="p-3 font-bold text-slate-900">${escapeHtml(p.title)}</td>
+                <td class="p-3 text-center font-mono text-slate-700">${p.scheduled_datetime}</td>
+                <td class="p-3 text-slate-600 text-xs">${escapeHtml(p.instructions)}</td>
+                <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${statusClass}">${p.status}</span></td>
+                <td class="p-3 text-center text-slate-700 font-mono text-xs">${p.completed_datetime}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tbodyProc.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">No diagnostic tests, scans, or consultations recorded.</td></tr>`;
+        }
+
+        // 3. Tabular Column: Daily Patient Adherence Log (Day-by-Day Record)
+        const tbodyHist = document.getElementById('rep-table-history');
+        if (rep.history_log && rep.history_log.length > 0) {
+          tbodyHist.innerHTML = rep.history_log.map(h => {
+            const isDone = ['Taken', 'Completed', 'Attended'].includes(h.status);
+            const stBadge = isDone ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                            h.status === 'Delayed' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                            h.status === 'Missed' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+                            h.status === 'Unresolved' ? 'bg-purple-100 text-purple-800 border border-purple-300' :
+                            'bg-slate-100 text-slate-700';
+
+            return `
+              <tr class="hover:bg-slate-50 transition">
+                <td class="p-3 text-center font-mono font-bold text-slate-800">${h.date}</td>
+                <td class="p-3 text-center font-mono text-slate-600">${h.scheduled_time}</td>
+                <td class="p-3 font-bold text-slate-900">${escapeHtml(h.title)}</td>
+                <td class="p-3 text-slate-600 text-xs">${escapeHtml(h.dosage_regimen)}</td>
+                <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${stBadge}">${h.status}</span></td>
+                <td class="p-3 text-center font-mono text-slate-700 text-xs">${h.actual_time}</td>
+                <td class="p-3 text-slate-700 text-xs">${escapeHtml(h.observation_note)}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tbodyHist.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No adherence log entries recorded yet.</td></tr>`;
+        }
+
+        // Escalations
+        const escList = document.getElementById('rep-escalations-list');
+        if (rep.escalations.length === 0) {
+          escList.innerHTML = `<div class="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500">No emergency escalations logged. All reminders responded to.</div>`;
+        } else {
+          escList.innerHTML = rep.escalations.map(esc => `
+            <div class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-900">
+              <div class="flex items-center justify-between font-bold">
+                <span>🚨 ${esc.escalation_type} &rarr; ${escapeHtml(esc.target_name)}</span>
+                <span class="text-[10px] text-rose-600">${esc.created_at.replace('T', ' ')}</span>
+              </div>
+              <div class="mt-1 text-slate-700">${escapeHtml(esc.message)}</div>
+            </div>
+          `).join('');
+        }
+
+        // Observations
+        const obsList = document.getElementById('rep-observations-list');
+        obsList.innerHTML = rep.observations.map(obs => `<li>${escapeHtml(obs)}</li>`).join('');
+
+      } catch (e) {
+        console.error("Report summary error:", e);
+      }
+    }
+
+    function downloadOfficialPDF() {
+      if (!currentUser) return;
+      window.location.href = `/api/reports/pdf/${currentUser.id}`;
+    }
+
+    async function seedDemoData() {
+      if (!currentUser) return;
+      try {
+        const res = await fetch(`/api/seed-demo/${currentUser.id}`, { method: 'POST' });
+        const data = await res.json();
+        alert(data.message || "Demo data seeded!");
+        loadTodaySchedule();
+      } catch (e) {
+        alert("Seed error: " + e);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
